@@ -1,1 +1,151 @@
+=================================================================================================================================================================================================================
+                                                                PROMETHEUS-GRAFANA MONITORING TOOL - PIYUSH CHAVHAN (HPC ENGINEER R&D)
+=================================================================================================================================================================================================================
 
+
+===========================================================
+*** Prometheus and Grafana installation on Master Node ***
+===========================================================
+
+[root@master ~]# cat > /etc/yum.repos.d/prometheus.repo <<'EOF'  
+[prometheus] 
+name=prometheus 
+baseurl=https://packagecloud.io/prometheus-rpm/release/el/$releasever/$basearch 
+repo_gpgcheck=1 
+enabled=1 
+gpgkey=https://packagecloud.io/prometheus-rpm/release/gpgkey 
+       https://raw.githubusercontent.com/lest/prometheus-rpm/master/RPM-GPG-KEY-prometheus-rpm 
+gpgcheck=1 
+metadata_expire=300 
+EOF 
+
+[root@master ~]# update-crypto-policies --set DEFAULT:SHA1 
+[root@master ~]# dnf -y install prometheus2 node_exporter 
+
+
+*** Configure basic settings in /etc/prometheus/prometheus.yml and add to the file:
+
+# my global config
+global:
+  scrape_interval: 15s # Set the scrape interval to every 15 seconds. Default is every 1 minute.
+  evaluation_interval: 15s # Evaluate rules every 15 seconds. The default is every 1 minute.
+  # scrape_timeout is set to the global default (10s).
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+# A scrape configuration containing exactly one endpoint to scrape:
+# Here it's Prometheus itself.
+scrape_configs:
+  # The job name is added as a label job=<job_name> to any timeseries scraped from this config.
+  - job_name: "prometheus"
+
+    # metrics_path defaults to '/metrics'
+    # scheme defaults to 'http'.
+
+    static_configs:
+      - targets: ["10.201.20.116:9090"]
+
+  - job_name: "master"
+    static_configs:
+      - targets: ["10.201.20.116:9090"]
+
+  - job_name: "node1"
+    static_configs:
+      - targets: ["10.201.20.191:9100"]
+      
+
+============================================
+*** Grafana installation on master node ***
+============================================
+
+yum -y install  https://dl.grafana.com/enterprise/release/grafana-enterprise-11.0.0-1.x86_64.rpm 
+
+*** Generate grafana crt and key ***
+
+sudo openssl req -new -key /etc/grafana/grafana.key -out /etc/grafana/grafana.csr 
+
+sudo openssl x509 -req -days 10 -in /etc/grafana/grafana.csr -signkey /etc/grafana/grafana.key -out /etc/grafana/grafana.crt 
+    
+*** Change the ownership and permissions ***
+
+sudo chown grafana:grafana /etc/grafana/grafana.crt 
+sudo chown grafana:grafana /etc/grafana/grafana.key 
+sudo chmod 400 /etc/grafana/grafana.key /etc/grafana/grafana.crt 
+
+*** configure the basic settings in /etc/grafana/grafana.ini file ***
+
+[server] 
+# Protocol (http, https, h2, socket) 
+protocol = http 
+
+# The ip address to bind to, empty will bind to all interfaces 
+http_addr = 10.201.20.138 
+  
+# The http port  to use 
+http_port = 3000 
+
+# The public facing domain name used to access grafana from a browser 
+domain = master 
+
+# https certs & key file 
+cert_file = /etc/grafana/grafana.crt 
+cert_key = /etc/grafana/grafana.key   
+
+*** start and enable the service ***
+
+systemctl start prometheus grafana-server 
+systemctl enable prometheus grafana-server 
+systemctl status prometheus grafana-server 
+    
+*** verify the configurations ***
+     
+[root@master ~]# curl http://10.201.20.116:3000             //grafana targets 
+<a href="/login">Found</a>. 
+
+[root@master ~]# curl http://10.201.20.116:9090             //prometheus targets 
+<a href="/graph">Found</a>.  
+
+
+==================================================
+*** Node Exporter Installation on Client Node ***        
+==================================================
+
+*** Create node-exporter folder and download the node exporter
+
+mkdir   /usr/local/bin/node_exporter 
+Wget https://github.com/prometheus/node_exporter/releases/download/v1.8.0/node_exporter-1.8.0.linux-amd64.tar.gz 
+tar zxvf node_exporter-*.tar.gz -C /usr/local/bin/node_exporter --strip-components 1 
+
+*** Add node-exporter service ***
+
+cat << EOF > /usr/lib/systemd/system/node-exporter.service 
+[Unit] 
+Description=Node Exporter 
+[Service] 
+ExecStart=/usr/local/bin/node_exporter/node_exporter 
+[Install] 
+WantedBy=multi-user.target 
+EOF 
+
+*** start node-exporter service ***
+
+chmod +x /lib/systemd/system/node-exporter.service 
+systemctl  daemon-reload 
+systemctl  enable   node-exporter.service 
+systemctl  start    node-exporter.service 
+systemctl  status   node-exporter.service 
+
+
+=================================================================================================================================================================================================================
+                                                                                              THE END - ScaleHPC
+=================================================================================================================================================================================================================                                                                                               
