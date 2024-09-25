@@ -1,1 +1,512 @@
+=================================================================================================================================================================================================================
+                                         LUSTRE CONFIGURATIONS on (Rocky 8.10) lustre rocky 8.10 kernel-4.18.0-553.5.1.el8  - PIYUSH CHAVHAN (HPC ENGINEER R&D)  
+=================================================================================================================================================================================================================
 
+=================================================================================
+*** How to install and configure lustre rocky 8.10 kernel-4.18.0-553.5.1.el8 ***
+=================================================================================
+https://wiki.whamcloud.com/pages/viewpage.action?pageId=258179277 --steps for installation 
+https://downloads.whamcloud.com/public/lustre/lustre-2.15.5/el8.10/server/SRPMS/kernel-4.18.0-553.5.1.el8_lustre.src.rpm   (4.18.0-553.el8_10.x86_64)
+https://downloads.whamcloud.com/public/e2fsprogs/latest --download for e2fsprogs
+
+=========================
+*** On MDS/MGMT Node ***
+=========================
+
+=========================================
+*** Install Kernel Development Tools ***
+=========================================
+
+[root@mds-mgmt ~]# yum -y groupinstall "Development Tools"
+
+=======================================
+*** Install Additional Dependencies ***
+=======================================
+
+[root@mds-mgmt ~]# yum config-manager --set-enabled powertools
+
+[root@mds-mgmt ~]# dnf install -y gcc autoconf libtool which make patch diffutils file binutils-devel python38 python3-devel elfutils-devel libselinux-devel libaio-devel dnf-plugins-core bc bison flex git libyaml-devel libnl3-devel libmount-devel json-c-devel redhat-lsb libssh-devel libattr-devel libtirpc-devel libblkid-devel openssl-devel libuuid-devel texinfo texinfo-tex
+
+[root@mds-mgmt ~]# yum -y install audit-libs-devel binutils-devel elfutils-devel kabi-dw ncurses-devel newt-devel numactl-devel openssl-devel pciutils-devel perl perl-devel python2 python3-docutils xmlto xz-devel elfutils-libelf-devel libcap-devel libcap-ng-devel llvm-toolset libyaml libyaml-devel kernel-rpm-macros kernel-abi-whitelists
+
+[root@mds-mgmt ~]# dnf install -y epel-release
+
+[root@mds-mgmt ~]# dnf install -y ccache pdsh
+
+[root@mds-mgmt ~]# dnf --enablerepo=ha install resource-agents
+
+===========================================
+*** Install Tools for Kernel RPM Build ***
+===========================================
+
+[root@mds-mgmt ~]# dnf install -y bpftool dwarves java-devel libbabeltrace-devel libbpf-devel libmnl-devel net-tools rsync
+
+[root@mds-mgmt ~]# dnf install -y python3-devel   //Only may be needed on RHEL9 derivatives
+
+[root@mds-mgmt ~]# yum install audit-libs-devel clang kabi-dw libcap-devel libtraceevent-devel llvm ncurses-devel newt-devel numactl-devel  pciutils-devel python3-docutils xmlto
+
+[root@mds-mgmt ~]# wget https://downloads.whamcloud.com/public/lustre/lustre-2.15.5/el8.10/server/SRPMS/kernel-4.18.0-553.5.1.el8_lustre.src.rpm
+
+[root@mds-mgmt ~]# uname -r
+4.18.0-553.el8_10.x86_64
+
+[root@mds-mgmt ~]# ls
+kernel-4.18.0-553.5.1.el8_lustre.src.rpm
+
+[root@mds-mgmt ~]# rpmbuild --rebuild kernel-4.18.0-553.5.1.el8_lustre.src.rpm
+
+[root@mds-mgmt ~]# mv /root/rpmbuild/RPMS/x86_64 /root/piyush/lustre-kernel
+
+[root@mds-mgmt ~]# cd /root/piyush/luster-kernel/x86_64
+
+[root@mds-mgmt x86_64]# pwd
+/root/piyush/lustre-kernel/x86_64
+
+[root@mds-mgmt x86_64]# ls
+bpftool-4.18.0-553.5.1.el8.x86_64.rpm                 kernel-debuginfo-common-x86_64-4.18.0-553.5.1.el8.x86_64.rpm  kernel-selftests-internal-4.18.0-553.5.1.el8.x86_64.rpm
+bpftool-debuginfo-4.18.0-553.5.1.el8.x86_64.rpm       kernel-debug-modules-4.18.0-553.5.1.el8.x86_64.rpm            kernel-tools-4.18.0-553.5.1.el8.x86_64.rpm
+kernel-4.18.0-553.5.1.el8.x86_64.rpm                  kernel-debug-modules-extra-4.18.0-553.5.1.el8.x86_64.rpm      kernel-tools-debuginfo-4.18.0-553.5.1.el8.x86_64.rpm
+kernel-core-4.18.0-553.5.1.el8.x86_64.rpm             kernel-debug-modules-internal-4.18.0-553.5.1.el8.x86_64.rpm   kernel-tools-libs-4.18.0-553.5.1.el8.x86_64.rpm
+kernel-cross-headers-4.18.0-553.5.1.el8.x86_64.rpm    kernel-devel-4.18.0-553.5.1.el8.x86_64.rpm                    kernel-tools-libs-devel-4.18.0-553.5.1.el8.x86_64.rpm
+kernel-debug-4.18.0-553.5.1.el8.x86_64.rpm            kernel-headers-4.18.0-553.5.1.el8.x86_64.rpm                  perf-4.18.0-553.5.1.el8.x86_64.rpm
+kernel-debug-core-4.18.0-553.5.1.el8.x86_64.rpm       kernel-ipaclones-internal-4.18.0-553.5.1.el8.x86_64.rpm       perf-debuginfo-4.18.0-553.5.1.el8.x86_64.rpm
+kernel-debug-debuginfo-4.18.0-553.5.1.el8.x86_64.rpm  kernel-modules-4.18.0-553.5.1.el8.x86_64.rpm                  python3-perf-4.18.0-553.5.1.el8.x86_64.rpm
+kernel-debug-devel-4.18.0-553.5.1.el8.x86_64.rpm      kernel-modules-extra-4.18.0-553.5.1.el8.x86_64.rpm            python3-perf-debuginfo-4.18.0-553.5.1.el8.x86_64.rpm
+kernel-debuginfo-4.18.0-553.5.1.el8.x86_64.rpm        kernel-modules-internal-4.18.0-553.5.1.el8.x86_64.rpm
+
+[root@mds-mgmt x86_64]# yum localinstall *.rpm
+
+[root@mds-mgmt x86_64]# grubby --default-kernel
+/boot/vmlinuz-4.18.0-553.5.1.el8.x86_64
+
+[root@mds-mgmt x86_64]# grubby --info=ALL
+index=0
+kernel="/boot/vmlinuz-4.18.0-553.el8_10.x86_64"
+args="ro console=ttyS0,115200n8 no_timer_check net.ifnames=0 crashkernel=auto $tuned_params"
+root="UUID=4990ceaa-f9c5-4fa5-abef-198724d21f40"
+initrd="/boot/initramfs-4.18.0-553.el8_10.x86_64.img $tuned_initrd"
+title="Rocky Linux (4.18.0-553.el8_10.x86_64) 8.10 (Green Obsidian)"
+id="5dedb03890064d12ae33dd13b8e4dc31-4.18.0-553.el8_10.x86_64"
+index=1
+kernel="/boot/vmlinuz-0-rescue-5dedb03890064d12ae33dd13b8e4dc31"
+args="ro console=ttyS0,115200n8 no_timer_check net.ifnames=0 crashkernel=auto"
+root="UUID=4990ceaa-f9c5-4fa5-abef-198724d21f40"
+initrd="/boot/initramfs-0-rescue-5dedb03890064d12ae33dd13b8e4dc31.img"
+title="Rocky Linux (0-rescue-5dedb03890064d12ae33dd13b8e4dc31) 8.10 (Green Obsidian)"
+id="5dedb03890064d12ae33dd13b8e4dc31-0-rescue"
+index=2
+kernel="/boot/vmlinuz-4.18.0-553.5.1.el8.x86_64+debug"
+args="ro console=ttyS0,115200n8 no_timer_check net.ifnames=0 crashkernel=auto $tuned_params"
+root="UUID=4990ceaa-f9c5-4fa5-abef-198724d21f40"
+initrd="/boot/initramfs-4.18.0-553.5.1.el8.x86_64+debug.img $tuned_initrd"
+title="Rocky Linux (4.18.0-553.5.1.el8.x86_64+debug) 8.10 (Green Obsidian)"
+id="0eafe0a9ce17463b83380f98b6393437-4.18.0-553.5.1.el8.x86_64+debug"
+index=3
+kernel="/boot/vmlinuz-4.18.0-553.5.1.el8.x86_64"
+args="ro console=ttyS0,115200n8 no_timer_check net.ifnames=0 crashkernel=auto $tuned_params"
+root="UUID=4990ceaa-f9c5-4fa5-abef-198724d21f40"
+initrd="/boot/initramfs-4.18.0-553.5.1.el8.x86_64.img $tuned_initrd"
+title="Rocky Linux (4.18.0-553.5.1.el8.x86_64) 8.10 (Green Obsidian)"
+id="0eafe0a9ce17463b83380f98b6393437-4.18.0-553.5.1.el8.x86_64"
+index=4
+kernel="/boot/vmlinuz-0-rescue-0eafe0a9ce17463b83380f98b6393437"
+args="ro console=ttyS0,115200n8 no_timer_check net.ifnames=0 crashkernel=auto"
+root="UUID=4990ceaa-f9c5-4fa5-abef-198724d21f40"
+initrd="/boot/initramfs-0-rescue-0eafe0a9ce17463b83380f98b6393437.img"
+title="Rocky Linux (0-rescue-0eafe0a9ce17463b83380f98b6393437) 8.10 (Green Obsidian)"
+id="0eafe0a9ce17463b83380f98b6393437-0-rescue"
+
+[root@mds-mgmt x86_64]# grubby --set-default /boot/vmlinuz-4.18.0-553.5.1.el8.x86_64
+The default is /boot/loader/entries/0eafe0a9ce17463b83380f98b6393437-4.18.0-553.5.1.el8.x86_64.conf with index 3 and kernel /boot/vmlinuz-4.18.0-553.5.1.el8.x86_64
+
+[root@mds-mgmt x86_64]# vim /etc/default/grub            //add GRUB_DEFAULT=4
+[root@mds-mgmt x86_64]# cat /etc/default/grub 
+GRUB_TIMEOUT=1
+GRUB_DISTRIBUTOR="$(sed 's, release .*$,,g' /etc/system-release)"
+GRUB_DEFAULT=4
+GRUB_DISABLE_SUBMENU=true
+GRUB_TERMINAL_OUTPUT="console"
+GRUB_CMDLINE_LINUX="console=ttyS0,115200n8 no_timer_check net.ifnames=0 crashkernel=auto"
+GRUB_DISABLE_RECOVERY="true"
+GRUB_ENABLE_BLSCFG=true
+
+[root@mds-mgmt x86_64]# grub2-mkconfig -o /boot/grub2/grub.cfg
+Generating grub configuration file ...
+done
+
+[root@mds-mgmt x86_64]# grub2-mkconfig -o /boot/efi/EFI/rocky/grub.cfg
+Generating grub configuration file ...
+done
+
+[root@mds-mgmt x86_64]# uname -r
+4.18.0-553.el8_10.x86_64
+
+[root@mds-mgmt x86_64]# reboot
+
+***Note: Reboot the server
+
+root@piyushpc:~# ssh root@10.201.20.50
+root@10.201.20.50's password: 
+Activate the web console with: systemctl enable --now cockpit.socket
+
+Last login: Wed Sep 18 10:03:43 2024 from 10.0.6.29
+[root@mds-mgmt ~]# 
+[root@mds-mgmt ~]# uname -r
+4.18.0-553.5.1.el8.x86_64
+
+***kernel version changes after reboot
+
+=============================================================================================
+*** Configuring e2fsprogs suite of utilities used to manage ext2, ext3, ext4 filesystems ***
+=============================================================================================
+
+[root@mds-mgmt ~]# wget https://downloads.whamcloud.com/public/e2fsprogs/latest/el8/SRPMS/e2fsprogs-1.47.1-wc1.el8.src.rpm
+
+[root@mds-mgmt ~]# rpmbuild --rebuild e2fsprogs-1.47.6.wc7-2.el8.src.rpm
+
+[root@mds-mgmt x86_64]# pwd
+/root/rpmbuild/RPMS/x86_64
+
+[root@mds-mgmt x86_64]# ls
+e2fsprogs-1.47.1-wc1.el8.x86_64.rpm              e2fsprogs-libs-1.47.1-wc1.el8.x86_64.rpm            libcom_err-debuginfo-1.47.1-wc1.el8.x86_64.rpm  libss-devel-1.47.1-wc1.el8.x86_64.rpm
+e2fsprogs-debuginfo-1.47.1-wc1.el8.x86_64.rpm    e2fsprogs-libs-debuginfo-1.47.1-wc1.el8.x86_64.rpm  libcom_err-devel-1.47.1-wc1.el8.x86_64.rpm
+e2fsprogs-debugsource-1.47.1-wc1.el8.x86_64.rpm  e2fsprogs-static-1.47.1-wc1.el8.x86_64.rpm          libss-1.47.1-wc1.el8.x86_64.rpm
+e2fsprogs-devel-1.47.1-wc1.el8.x86_64.rpm        libcom_err-1.47.1-wc1.el8.x86_64.rpm                libss-debuginfo-1.47.1-wc1.el8.x86_64.rpm
+
+[root@mds-mgmt x86_64]# yum localinstall *.rpm
+
+[root@mds-mgmt ~]# git clone -b b2_15 git://git.whamcloud.com/fs/lustre-release.git
+
+[root@mds-mgmt ~]# cd lsutre-release
+
+[root@mds-mgmt lustre-release]# git checkout b2_15
+
+[root@mds-mgmt lustre-release]# sh autogen.sh
+
+[root@mds-mgmt lustre-release]# ./configure --enable-server --enable-ldiskfs --enable-mindf --enable-snmp                    //if ib is used --with-o2ib=/usr/src/ofa_kernel/default
+
+[root@mds-mgmt lustre-release]# yum install net-snmp net-snmp-devel
+
+[root@mds-mgmt lustre-release]# make -j10
+
+[root@mds-mgmt lustre-release]# vim lustre.spec
+#BuildRequires: %kernel_module_packages_buildreqs
+#BuildRequires: kernel-abi-whitelists
+BuildRequires: kernel-abi-stablelists        //instead of abi-whitelist use abi-stablelists
+
+[root@mds-mgmt lustre-release]# make rpms
+
+[root@mds-mgmt lustre-release]# ls
+aclocal.m4       contrib                                                    kmp-lustre-osd-zfs.files                    lustre-dkms_post-build.sh                                   MAINTAINERS
+autogen.sh       COPYING                                                    kmp-lustre-osd-zfs.preamble                 lustre-dkms_pre-build.sh                                    Makefile
+autom4te.cache   debian                                                     kmp-lustre.preamble                         lustre-dkms.spec                                            Makefile.in
+autoMakefile     Documentation                                              kmp-lustre-tests.files                      lustre-dkms.spec.in                                         modules.order
+autoMakefile.am  find-provides                                              ldiskfs                                     lustre-iokit                                                Module.symvers
+autoMakefile.in  find-provides.ksyms                                        libcfs                                      lustre-iokit-2.15.5-1.el8.x86_64.rpm                        README
+build            kmod-lustre-2.15.5-1.el8.x86_64.rpm                        libtool                                     lustre-osd-ldiskfs-mount-2.15.5-1.el8.x86_64.rpm            rpm
+ChangeLog        kmod-lustre-debuginfo-2.15.5-1.el8.x86_64.rpm              lnet                                        lustre-osd-ldiskfs-mount-debuginfo-2.15.5-1.el8.x86_64.rpm  Rules
+config           kmod-lustre-osd-ldiskfs-2.15.5-1.el8.x86_64.rpm            lustre                                      lustre-resource-agents-2.15.5-1.el8.x86_64.rpm              snmp
+config.h         kmod-lustre-osd-ldiskfs-debuginfo-2.15.5-1.el8.x86_64.rpm  lustre-2.15.5-1.el8.x86_64.rpm              lustre.spec                                                 stamp-h1
+config.h.in      kmod-lustre-tests-2.15.5-1.el8.x86_64.rpm                  lustre-2.15.5-1.src.rpm                     lustre.spec.in                                              undef.h
+config.log       kmod-lustre-tests-debuginfo-2.15.5-1.el8.x86_64.rpm        lustre-2.15.5.tar.gz                        lustre-tests-2.15.5-1.el8.x86_64.rpm
+config.status    kmp-lustre.files                                           lustre-debuginfo-2.15.5-1.el8.x86_64.rpm    lustre-tests-debuginfo-2.15.5-1.el8.x86_64.rpm
+configure        kmp-lustre-osd-ldiskfs.files                               lustre-debugsource-2.15.5-1.el8.x86_64.rpm  LUSTRE-VERSION-FILE
+configure.ac     kmp-lustre-osd-ldiskfs.preamble                            lustre-devel-2.15.5-1.el8.x86_64.rpm        LUSTRE-VERSION-GEN
+
+[root@mds-mgmt lustre-release]# yum localinstall kmod-lustre-2.15.5-1.el8.x86_64.rpm kmod-lustre-debuginfo-2.15.5-1.el8.x86_64.rpm kmod-lustre-osd-ldiskfs-2.15.5-1.el8.x86_64.rpm kmod-lustre-osd-ldiskfs-debuginfo-2.15.5-1.el8.x86_64.rpm kmod-lustre-tests-2.15.5-1.el8.x86_64.rpm  kmod-lustre-tests-debuginfo-2.15.5-1.el8.x86_64.rpm lustre-2.15.5-1.el8.x86_64.rpm lustre-debuginfo-2.15.5-1.el8.x86_64.rpm lustre-debugsource-2.15.5-1.el8.x86_64.rpm lustre-devel-2.15.5-1.el8.x86_64.rpm lustre-iokit-2.15.5-1.el8.x86_64.rpm lustre-osd-ldiskfs-mount-2.15.5-1.el8.x86_64.rpm lustre-osd-ldiskfs-mount-debuginfo-2.15.5-1.el8.x86_64.rpm lustre-tests-2.15.5-1.el8.x86_64.rpm lustre-tests-debuginfo-2.15.5-1.el8.x86_64.rpm
+
+
+[root@mds-mgmt lustre-release]# vim /etc/modprobe.d/lnet.conf
+options lnet networks=tcp0(eth0)      //network interface which youre using.
+
+[root@mds-mgmt ~]# ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9000 qdisc fq_codel state UP group default qlen 1000
+    link/ether fa:16:3e:41:94:b4 brd ff:ff:ff:ff:ff:ff
+    altname enp0s3
+    altname ens3
+    inet 10.201.20.50/24 brd 10.201.20.255 scope global dynamic noprefixroute eth0
+       valid_lft 35858sec preferred_lft 35858sec
+    inet6 fe80::f816:3eff:fe41:94b4/64 scope link 
+       valid_lft forever preferred_lft forever
+
+
+***start and enable the services***
+
+[root@mds-mgmt lustre-release]# systemctl start lnet
+[root@mds-mgmt lustre-release]# systemctl enable lnet
+[root@mds-mgmt lustre-release]# lnetctl net add --net tcp0 --if eth0
+[root@mds-mgmt lustre-release]# lnetctl lnet configure
+[root@mds-mgmt lustre-release]# ip link show eth0
+[root@mds-mgmt lustre-release]# ip link set eth0 up
+[root@mds-mgmt lustre-release]# lnetctl net show
+
+***Note: Follow this steps to configure the mds, oss and nodes (only till kernel patching)
+
+===============
+*** On mds1 ***
+===============
+
+[root@mds-mgmt ~]# mkfs.lustre --fsname=scratch --mgs --mdt --index=0 /dev/vdb
+
+[root@mds-mgmt ~]# mount -t lustre /dev/vdb /metadata
+
+[root@mds-mgmt ~]# mkfs.lustre --fsname=scratch --mgsnode=10.201.20.50@tcp0 --ost --index=0 /dev/vdc
+
+[root@mds-mgmt ~]# mount -t lustre /dev/vdc /ost001
+
+[root@mds-mgmt ~]# df -Th
+Filesystem     Type      Size  Used Avail Use% Mounted on
+devtmpfs       devtmpfs  7.7G     0  7.7G   0% /dev
+tmpfs          tmpfs     7.7G     0  7.7G   0% /dev/shm
+tmpfs          tmpfs     7.7G   33M  7.7G   1% /run
+tmpfs          tmpfs     7.7G     0  7.7G   0% /sys/fs/cgroup
+/dev/vda5      xfs        79G   20G   60G  25% /
+/dev/vda2      xfs       994M  568M  427M  58% /boot
+/dev/vda1      vfat       99M  5.8M   94M   6% /boot/efi
+/dev/vdb       lustre    5.6G  2.0M  5.1G   1% /metadata
+/dev/vdc       lustre    9.2G  1.3M  8.7G   1% /ost001
+tmpfs          tmpfs     1.6G     0  1.6G   0% /run/user/0
+
+[root@mds-mgmt ~]# lsblk 
+NAME   MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
+vda    252:0    0   80G  0 disk 
+├─vda1 252:1    0   99M  0 part /boot/efi
+├─vda2 252:2    0 1000M  0 part /boot
+├─vda3 252:3    0    4M  0 part 
+├─vda4 252:4    0    1M  0 part 
+└─vda5 252:5    0 78.9G  0 part /
+vdb    252:16   0   10G  0 disk /metadata
+vdc    252:32   0   10G  0 disk /ost001
+
+[root@mds-mgmt ~]# lctl dl 
+  0 UP osd-ldiskfs scratch-MDT0000-osd scratch-MDT0000-osd_UUID 10
+  1 UP mgs MGS MGS 8
+  2 UP mgc MGC10.201.20.50@tcp 5bf1d102-7a6d-41d3-bc94-6c0d51596f4e 4
+  3 UP mds MDS MDS_uuid 2
+  4 UP lod scratch-MDT0000-mdtlov scratch-MDT0000-mdtlov_UUID 3
+  5 UP mdt scratch-MDT0000 scratch-MDT0000_UUID 12
+  6 UP mdd scratch-MDD0000 scratch-MDD0000_UUID 3
+  7 UP qmt scratch-QMT0000 scratch-QMT0000_UUID 3
+  8 UP lwp scratch-MDT0000-lwp-MDT0000 scratch-MDT0000-lwp-MDT0000_UUID 4
+  9 UP osd-ldiskfs scratch-OST0000-osd scratch-OST0000-osd_UUID 4
+ 10 UP ost OSS OSS_uuid 2
+ 11 UP obdfilter scratch-OST0000 scratch-OST0000_UUID 4
+ 12 UP lwp scratch-MDT0000-lwp-OST0000 scratch-MDT0000-lwp-OST0000_UUID 4
+ 13 UP osp scratch-OST0000-osc-MDT0000 scratch-MDT0000-mdtlov_UUID 4
+ 14 UP osp scratch-OST0001-osc-MDT0000 scratch-MDT0000-mdtlov_UUID 4
+ 15 UP osp scratch-OST0002-osc-MDT0000 scratch-MDT0000-mdtlov_UUID 4
+
+
+===============
+*** On oss1 ***
+===============
+
+***Note: First do the kernel patching for lustre kernel patch and e2fsprogs rpmbuild (follow the exact same steps of mds/mgmt given above).
+
+[root@oss1 ~]# mkfs.lustre --ost --fsname=scratch --mgsnode=10.201.20.50@tcp --index=1 --reformat /dev/vdb
+
+   Permanent disk data:
+Target:     scratch:OST0001
+Index:      1
+Lustre FS:  scratch
+Mount type: ldiskfs
+Flags:      0x62
+              (OST first_time update )
+Persistent mount opts: ,errors=remount-ro
+Parameters: mgsnode=10.201.20.50@tcp
+
+device size = 10240MB
+formatting backing filesystem ldiskfs on /dev/vdb
+	target name   scratch:OST0001
+	kilobytes     10485760
+	options        -J size=409 -I 512 -q -O extents,uninit_bg,dir_nlink,quota,project,huge_file,^fast_commit,flex_bg -G 256 -E resize="4290772992",lazy_journal_init="0",lazy_itable_init="0" -F
+mkfs_cmd = mke2fs -j -b 4096 -L scratch:OST0001  -J size=409 -I 512 -q -O extents,uninit_bg,dir_nlink,quota,project,huge_file,^fast_commit,flex_bg -G 256 -E resize="4290772992",lazy_journal_init="0",lazy_itable_init="0" -F /dev/vdb 10485760k
+Writing CONFIGS/mountdata
+
+[root@oss1 ~]# mkfs.lustre --ost --fsname=scratch --mgsnode=10.201.20.50@tcp --index=2 --reformat /dev/vdc
+
+   Permanent disk data:
+Target:     scratch:OST0002
+Index:      2
+Lustre FS:  scratch
+Mount type: ldiskfs
+Flags:      0x62
+              (OST first_time update )
+Persistent mount opts: ,errors=remount-ro
+Parameters: mgsnode=10.201.20.50@tcp
+
+device size = 10240MB
+formatting backing filesystem ldiskfs on /dev/vdc
+	target name   scratch:OST0002
+	kilobytes     10485760
+	options        -J size=409 -I 512 -q -O extents,uninit_bg,dir_nlink,quota,project,huge_file,^fast_commit,flex_bg -G 256 -E resize="4290772992",lazy_journal_init="0",lazy_itable_init="0" -F
+mkfs_cmd = mke2fs -j -b 4096 -L scratch:OST0002  -J size=409 -I 512 -q -O extents,uninit_bg,dir_nlink,quota,project,huge_file,^fast_commit,flex_bg -G 256 -E resize="4290772992",lazy_journal_init="0",lazy_itable_init="0" -F /dev/vdc 10485760k
+Writing CONFIGS/mountdata
+
+[root@oss1 ~]# mkdir /mnt/ost1
+[root@oss1 ~]# mkdir /mnt/ost2
+
+[root@oss1 ~]# mount -t lustre /dev/vdb /mnt/ost1/
+mount.lustre: increased '/sys/devices/pci0000:00/0000:00:08.0/virtio5/block/vdb/queue/max_sectors_kb' from 1280 to 16384
+
+[root@oss1 ~]# mount -t lustre /dev/vdc /mnt/ost2/
+mount.lustre: increased '/sys/devices/pci0000:00/0000:00:09.0/virtio6/block/vdc/queue/max_sectors_kb' from 1280 to 16384
+
+[root@oss1 ~]# df -Th 
+Filesystem     Type      Size  Used Avail Use% Mounted on
+devtmpfs       devtmpfs  7.7G     0  7.7G   0% /dev
+tmpfs          tmpfs     7.7G     0  7.7G   0% /dev/shm
+tmpfs          tmpfs     7.7G   25M  7.7G   1% /run
+tmpfs          tmpfs     7.7G     0  7.7G   0% /sys/fs/cgroup
+/dev/vda5      xfs        79G   21G   59G  27% /
+/dev/vda2      xfs       994M  568M  427M  58% /boot
+/dev/vda1      vfat       99M  5.8M   94M   6% /boot/efi
+tmpfs          tmpfs     1.6G     0  1.6G   0% /run/user/0
+/dev/vdb       lustre    9.2G  1.3M  8.7G   1% /mnt/ost1
+/dev/vdc       lustre    9.2G  1.3M  8.7G   1% /mnt/ost2
+
+[root@oss1 ~]# lctl dl 
+  0 UP osd-ldiskfs scratch-OST0001-osd scratch-OST0001-osd_UUID 4
+  1 UP mgc MGC10.201.20.50@tcp fd5eb04b-7d6a-4632-a011-0917633e53ab 4
+  2 UP ost OSS OSS_uuid 2
+  3 UP obdfilter scratch-OST0001 scratch-OST0001_UUID 4
+  4 UP lwp scratch-MDT0000-lwp-OST0001 scratch-MDT0000-lwp-OST0001_UUID 4
+  5 UP osd-ldiskfs scratch-OST0002-osd scratch-OST0002-osd_UUID 4
+  6 UP obdfilter scratch-OST0002 scratch-OST0002_UUID 4
+  7 UP lwp scratch-MDT0000-lwp-OST0002 scratch-MDT0000-lwp-OST0002_UUID 4
+
+======================
+*** On Client Node ***
+======================
+
+***Note: First do the kernel patching for lustre kernel patch (follow the above steps of mds/mgmt till kernel patching).
+
+[root@node1 ~]# dnf install wget rpm-build automake bc binutils-devel bison elfutils-devel elfutils-libelf-devel expect flex gcc gcc-c++ git glib2 glib2-devel keyutils-libs-devel krb5-devel libattr-devel libblkid-devel libnl3-devel libselinux-devel libtool libuuid-devel kernel-devel make ncurses-devel net-tools python3-devel redhat-rpm-config systemd-devel wget yum-utils
+
+[root@node1 ~]# git clone -b b2_15 git://git.whamcloud.com/fs/lustre-release.git
+
+cd lsutre-release
+git checkout b2_15
+sh autogen.sh
+
+[root@node1 lustre-release]# ./configure --disable-server
+
+[root@node1 lustre-release]# yum install net-snmp net-snmp-devel
+
+[root@node1 lustre-release]# make -j10
+
+[root@node1 lustre-release]# vim lustre.spec
+#BuildRequires: %kernel_module_packages_buildreqs
+#BuildRequires: kernel-abi-whitelist
+BuildRequires: kernel-abi-stablelists
+
+[root@node1 lustre-release]# make rpms
+
+[root@node1 lustre-release]# ls
+aclocal.m4       configure.ac                                                kmp-lustre-osd-zfs.files                           lustre-client-devel-2.15.5-1.el8.x86_64.rpm            Makefile
+autogen.sh       contrib                                                     kmp-lustre-osd-zfs.preamble                        lustre-client-tests-2.15.5-1.el8.x86_64.rpm            Makefile.in
+autom4te.cache   COPYING                                                     kmp-lustre.preamble                                lustre-client-tests-debuginfo-2.15.5-1.el8.x86_64.rpm  modules.order
+autoMakefile     debian                                                      kmp-lustre-tests.files                             lustre-dkms_post-build.sh                              Module.symvers
+autoMakefile.am  Documentation                                               ldiskfs                                            lustre-dkms_pre-build.sh                               README
+autoMakefile.in  find-provides                                               libcfs                                             lustre-dkms.spec                                       rpm
+build            find-provides.ksyms                                         libtool                                            lustre-dkms.spec.in                                    Rules
+ChangeLog        kmod-lustre-client-2.15.5-1.el8.x86_64.rpm                  lnet                                               lustre-iokit                                           snmp
+config           kmod-lustre-client-debuginfo-2.15.5-1.el8.x86_64.rpm        lustre                                             lustre-iokit-2.15.5-1.el8.x86_64.rpm                   stamp-h1
+config.h         kmod-lustre-client-tests-2.15.5-1.el8.x86_64.rpm            lustre-2.15.5-1.src.rpm                            lustre.spec                                            undef.h
+config.h.in      kmod-lustre-client-tests-debuginfo-2.15.5-1.el8.x86_64.rpm  lustre-2.15.5.tar.gz                               lustre.spec.in
+config.log       kmp-lustre.files                                            lustre-client-2.15.5-1.el8.x86_64.rpm              LUSTRE-VERSION-FILE
+config.status    kmp-lustre-osd-ldiskfs.files                                lustre-client-debuginfo-2.15.5-1.el8.x86_64.rpm    LUSTRE-VERSION-GEN
+configure        kmp-lustre-osd-ldiskfs.preamble                             lustre-client-debugsource-2.15.5-1.el8.x86_64.rpm  MAINTAINERS
+
+[root@node1 lustre-release]# dnf install -y kmod-lustre-client-2.15.5-1.el8.x86_64 lustre-client-2.15.5-1.el8.x86_64 lustre-iokit-2.15.5-1.el8.x86_64 kmod-lustre-client-tests-2.15.5-1.el8.x86_64 lustre-client-devel-2.15.5-1.el8.x86_64
+
+[root@node1 lustre-release]# vim /etc/modprobe.d/lustre.conf
+options lnet networks=tcp0(eth0)
+
+[root@node1 lustre-release]# ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9000 qdisc fq_codel state UP group default qlen 1000
+    link/ether fa:16:3e:32:06:1c brd ff:ff:ff:ff:ff:ff
+    altname enp0s3
+    altname ens3
+    inet 10.201.20.177/24 brd 10.201.20.255 scope global dynamic noprefixroute eth0
+       valid_lft 38922sec preferred_lft 38922sec
+    inet6 fe80::f816:3eff:fe32:61c/64 scope link 
+       valid_lft forever preferred_lft forever
+
+*** start and enable the services ***
+
+[root@node1 lustre-release]# systemctl start lnet
+[root@node1 lustre-release]# systemctl enable lnet
+[root@node1 lustre-release]# lnetctl net add --net tcp0 --if eth0
+[root@node1 lustre-release]# lnetctl lnet configure
+[root@node1 lustre-release]# ip link show eth0
+[root@node1 lustre-release]# ip link set eth0 up
+[root@node1 lustre-release]# lnetctl net show
+
+[root@node1 lustre-release]# mkdir /storage
+[root@node1 lustre-release]# mount -t lustre 10.201.20.50@tcp0:/scratch /storage
+
+[root@node1 lustre-release]# df -Th | grep /storage
+10.201.20.50@tcp:/scratch lustre     28G  3.7M   26G   1% /storage
+
+[root@node1 lustre-release]# lfs df -h 
+UUID                       bytes        Used   Available Use% Mounted on
+scratch-MDT0000_UUID        5.5G        2.0M        5.0G   1% /storage[MDT:0]
+scratch-OST0000_UUID        9.2G        1.2M        8.7G   1% /storage[OST:0]
+scratch-OST0001_UUID        9.2G        1.2M        8.7G   1% /storage[OST:1]
+scratch-OST0002_UUID        9.2G        1.2M        8.7G   1% /storage[OST:2]
+
+filesystem_summary:        27.5G        3.7M       26.0G   1% /storage
+
+[root@node1 lustre-release]# lctl dl 
+  0 UP mgc MGC10.201.20.50@tcp 1a05eefb-237e-4745-b2f6-70fffe72e41a 4
+  1 UP lov scratch-clilov-ffff92e23758c800 f68702de-ef18-4043-a753-4bbf7bd87b7c 3
+  2 UP lmv scratch-clilmv-ffff92e23758c800 f68702de-ef18-4043-a753-4bbf7bd87b7c 4
+  3 UP mdc scratch-MDT0000-mdc-ffff92e23758c800 f68702de-ef18-4043-a753-4bbf7bd87b7c 4
+  4 UP osc scratch-OST0000-osc-ffff92e23758c800 f68702de-ef18-4043-a753-4bbf7bd87b7c 4
+  5 UP osc scratch-OST0001-osc-ffff92e23758c800 f68702de-ef18-4043-a753-4bbf7bd87b7c 4
+  6 UP osc scratch-OST0002-osc-ffff92e23758c800 f68702de-ef18-4043-a753-4bbf7bd87b7c 4
+
+*** Run the dd command ***
+
+[root@node1 lustre]# dd if=/dev/zero of=/lustre/zero.dat bs=2G count=4            //This specifies that 4 blocks of data will be written, resulting in a total of 8 gigabytes of data (2G * 4).
+dd: warning: partial read (2147479552 bytes); suggest iflag=fullblock
+0+4 records in
+0+4 records out
+8589918208 bytes (8.6 GB, 8.0 GiB) copied, 21.7264 s, 395 MB/s
+
+[root@node1 lustre]# ls
+zero.dat
+
+[root@node1 lustre]# du -sh .
+8.0G	.
+
+[root@node1 lustre]# df -h 
+Filesystem                 Size  Used Avail Use% Mounted on
+devtmpfs                   7.7G     0  7.7G   0% /dev
+tmpfs                      7.7G     0  7.7G   0% /dev/shm
+tmpfs                      7.7G   17M  7.7G   1% /run
+tmpfs                      7.7G     0  7.7G   0% /sys/fs/cgroup
+/dev/vda5                   79G   23G   57G  28% /
+/dev/vda2                  994M  571M  424M  58% /boot
+/dev/vda1                   99M  5.8M   94M   6% /boot/efi
+tmpfs                      1.6G     0  1.6G   0% /run/user/0
+10.201.20.50@tcp:/scratch   28G  8.1G   18G  31% /lustre
+
+
+================================================================================================================================================================================================================
+                                                                                              THE END - ScaleHPC
+=================================================================================================================================================================================================================
+                                                               
