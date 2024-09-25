@@ -505,6 +505,33 @@ tmpfs                      7.7G     0  7.7G   0% /sys/fs/cgroup
 tmpfs                      1.6G     0  1.6G   0% /run/user/0
 10.201.20.50@tcp:/scratch   28G  8.1G   18G  31% /lustre
 
+[root@node1 ~]# lfs osts
+OBDS:
+0: scratch-OST0000_UUID ACTIVE
+1: scratch-OST0001_UUID ACTIVE
+2: scratch-OST0002_UUID ACTIVE
+
+[root@node1 ~]# lfs mdts
+MDTS:
+0: scratch-MDT0000_UUID ACTIVE
+
+[root@node1 ~]# lfs df -i 
+UUID                      Inodes       IUsed       IFree IUse% Mounted on
+scratch-MDT0000_UUID     4194304         278     4194026   1% /lustre[MDT:0]
+scratch-OST0000_UUID      655360         267      655093   1% /lustre[OST:0]
+scratch-OST0001_UUID      655360         267      655093   1% /lustre[OST:1]
+scratch-OST0002_UUID      655360         266      655094   1% /lustre[OST:2]
+
+filesystem_summary:      1965558         278     1965280   1% /lustre
+
+[root@node1 ~]# lfs df -h
+UUID                       bytes        Used   Available Use% Mounted on
+scratch-MDT0000_UUID        5.5G        2.0M        5.0G   1% /lustre[MDT:0]
+scratch-OST0000_UUID        9.2G        1.2M        8.7G   1% /lustre[OST:0]
+scratch-OST0001_UUID        9.2G        1.2M        8.7G   1% /lustre[OST:1]
+scratch-OST0002_UUID        9.2G        1.2M        8.7G   1% /lustre[OST:2]
+
+filesystem_summary:        27.5G        3.7M       26.0G   1% /lustre
 
 ================================================================================================================================================================================================================
                                                                                               THE END - ScaleHPC
