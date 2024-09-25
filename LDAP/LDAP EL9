@@ -1,1 +1,832 @@
+================================================================================================================================================================================================================
+                                                                          LDAP EL8-EL9 CONFIGURATION - PIYUSH CHAVHAN (HPC ENGINEER R&D)
+================================================================================================================================================================================================================                                                                      
+
+==================================
+*** LDAP SERVER CONFIGURATION ***
+==================================
+
+[root@ldap-server ~]# dnf update -y 
+Last metadata expiration check: 3:20:05 ago on Tue 03 Sep 2024 02:46:45 AM UTC.
+Dependencies resolved.
+Nothing to do.
+Complete!
+
+[root@ldap-server ~]# dnf config-manager --set-enabled plus
+
+[root@ldap-server ~]# yum repolist 
+repo id                                                                          repo name
+appstream                                                                        Rocky Linux 9 - AppStream
+baseos                                                                           Rocky Linux 9 - BaseOS
+epel                                                                             Extra Packages for Enterprise Linux 9 - x86_64
+epel-cisco-openh264                                                              Extra Packages for Enterprise Linux 9 openh264 (From Cisco) - x86_64
+extras                                                                           Rocky Linux 9 - Extras
+plus                                                                             Rocky Linux 9 - Plus
+
+[root@ldap-server ~]# dnf install openldap openldap-servers openldap-clients -y 
+
+[root@ldap-server ~]# rpm -qa | grep -i openldap-*
+openldap-2.6.6-3.el9.x86_64
+openldap-devel-2.6.6-3.el9.x86_64
+openldap-compat-2.6.6-3.el9.x86_64
+openldap-clients-2.6.6-3.el9.x86_64
+openldap-servers-2.6.6-3.el9.x86_64
+
+=====================================
+*** start and enable the service ***
+=====================================
+
+[root@ldap-server ~]# systemctl enable slapd --now
+Created symlink /etc/systemd/system/openldap.service → /usr/lib/systemd/system/slapd.service.
+Created symlink /etc/systemd/system/multi-user.target.wants/slapd.service → /usr/lib/systemd/system/slapd.service.
+
+[root@ldap-server ~]# systemctl status slapd 
+● slapd.service - OpenLDAP Server Daemon
+     Loaded: loaded (/usr/lib/systemd/system/slapd.service; enabled; preset: disabled)
+     Active: active (running) since Tue 2024-09-03 06:08:21 UTC; 11s ago
+       Docs: man:slapd
+             man:slapd-config
+             man:slapd-mdb
+             file:///usr/share/doc/openldap-servers/guide.html
+    Process: 38309 ExecStartPre=/usr/libexec/openldap/check-config.sh (code=exited, status=0/SUCCESS)
+    Process: 38330 ExecStart=/usr/sbin/slapd -u ldap -h ldap:/// ldaps:/// ldapi:/// (code=exited, status=0/SUCCESS)
+   Main PID: 38331 (slapd)
+      Tasks: 2 (limit: 24608)
+     Memory: 5.3M
+        CPU: 62ms
+     CGroup: /system.slice/slapd.service
+             └─38331 /usr/sbin/slapd -u ldap -h "ldap:/// ldaps:/// ldapi:///"
+
+Sep 03 06:08:21 ldap-server systemd[1]: Starting OpenLDAP Server Daemon...
+Sep 03 06:08:21 ldap-server runuser[38313]: pam_unix(runuser:session): session opened for user ldap(uid=55) by (uid=0)
+Sep 03 06:08:21 ldap-server runuser[38313]: pam_unix(runuser:session): session closed for user ldap
+Sep 03 06:08:21 ldap-server slapd[38330]: @(#) $OpenLDAP: slapd 2.6.6 (Jul 26 2024 00:00:00) $
+                                                  openldap
+Sep 03 06:08:21 ldap-server slapd[38331]: slapd starting
+Sep 03 06:08:21 ldap-server systemd[1]: Started OpenLDAP Server Daemon.
+
+=================================
+*** Create the ldap password ***
+=================================
+
+[root@ldap-server ~]# slappasswd
+New password: 
+Re-enter new password: 
+{SSHA}8JxgDJVTxwQWKmRHc1ip0PdAPjY4looN        ***Note:copy the password at some location for future use
+
+
+===============================
+*** Lists the olcDatabases ***
+===============================
+
+[root@ldap-server ~]# sudo ldapsearch -Q -LLL -Y EXTERNAL -H ldapi:/// -b cn=config dn
+dn: cn=config
+
+dn: cn=schema,cn=config
+
+dn: cn={0}core,cn=schema,cn=config
+
+dn: olcDatabase={-1}frontend,cn=config
+
+dn: olcDatabase={0}config,cn=config
+
+dn: olcDatabase={1}monitor,cn=config
+
+dn: olcDatabase={2}mdb,cn=config
+
+=================================================================================
+*** Create an LDIF file db.ldif to configure the domain and admin credentials ***
+=================================================================================
+
+[root@ldap-server ~]# vim db.ldif
+
+dn: olcDatabase={2}mdb,cn=config
+changetype: modify
+replace: olcSuffix
+olcSuffix: dc=scalehpc,dc=local
+
+dn: olcDatabase={2}mdb,cn=config
+changetype: modify
+replace: olcRootDN
+olcRootDN: cn=admin,dc=scalehpc,dc=local
+
+dn: olcDatabase={2}mdb,cn=config
+changetype: modify
+replace: olcRootPW
+olcRootPW: {SSHA}8JxgDJVTxwQWKmRHc1ip0PdAPjY4looN
+
+
+--- Apply the configuration ---
+
+[root@ldap-server ~]# sudo ldapmodify -Y EXTERNAL -H ldapi:/// -f db.ldif
+SASL/EXTERNAL authentication started
+SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+SASL SSF: 0
+modifying entry "olcDatabase={2}mdb,cn=config"
+
+modifying entry "olcDatabase={2}mdb,cn=config"
+
+modifying entry "olcDatabase={2}mdb,cn=config"
+
+===========================
+*** Add Basic Schemas ***
+===========================
+
+[root@ldap-server ~]# sudo ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/cosine.ldif
+SASL/EXTERNAL authentication started
+SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+SASL SSF: 0
+adding new entry "cn=cosine,cn=schema,cn=config"
+
+[root@ldap-server ~]# sudo ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/nis.ldif
+SASL/EXTERNAL authentication started
+SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+SASL SSF: 0
+adding new entry "cn=nis,cn=schema,cn=config"
+
+[root@ldap-server ~]# sudo ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/inetorgperson.ldif
+SASL/EXTERNAL authentication started
+SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+SASL SSF: 0
+adding new entry "cn=inetorgperson,cn=schema,cn=config"
+
+
+--- use the ldapsearch command to query the LDAP server for the loaded schemas ---
+
+[root@ldap-server ~]# sudo ldapsearch -Q -LLL -Y EXTERNAL -H ldapi:/// -b cn=schema,cn=config dn
+dn: cn=schema,cn=config
+
+dn: cn={0}core,cn=schema,cn=config
+
+dn: cn={1}cosine,cn=schema,cn=config
+
+dn: cn={2}nis,cn=schema,cn=config
+
+dn: cn={3}inetorgperson,cn=schema,cn=config
+
+
+==========================================
+*** Add Base and Organizational Units ***
+==========================================
+
+
+[root@ldap-server ~]# sudo ldapsearch -x -LLL -b dc=scalehpc,dc=local "(objectClass=organizationalUnit)" dn
+No such object (32)
+
+[root@ldap-server ~]# vim add-base.ldif
+
+dn: dc=scalehpc,dc=local
+objectClass: top
+objectClass: dcObject
+objectClass: organization
+o: ScaleHPC
+dc: scalehpc
+
+[root@ldap-server ~]# sudo ldapadd -x -D "cn=admin,dc=scalehpc,dc=local" -W -f add-base.ldif
+Enter LDAP Password: 
+adding new entry "dc=netweb,dc=local"
+
+[root@ldap-server ~]# ldapadd -x -D "cn=admin,dc=scalehpc,dc=local" -W -f ou.ldif
+Enter LDAP Password: 
+adding new entry "ou=people,dc=scalehpc,dc=local"
+
+adding new entry "ou=groups,dc=scalehpc,dc=local"
+
+
+[root@ldap-server ~]# cat ou.ldif 
+dn: ou=people,dc=scalehpc,dc=local
+objectClass: organizationalUnit
+ou: people
+
+-
+dn: ou=groups,dc=scalehpc,dc=local
+objectClass: organizationalUnit
+ou: groups
+
+[root@ldap-server ~]# sudo ldapsearch -x -LLL -b dc=scalehpc,dc=local "(ou=*)" dn
+dn: ou=people,dc=scalehpc,dc=local
+
+dn: ou=groups,dc=scalehpc,dc=local
+
+==========================================================
+*** Managing user accounts : Add new users and groups ***
+==========================================================
+
+*** adding user ***
+
+[root@ldap-server ~]# cat new_user.ldif 
+dn: uid=testuser1,ou=people,dc=scalehpc,dc=local
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: top
+cn: testuser1
+sn: testuser1
+uidNumber: 1001
+gidNumber: 1001
+homeDirectory: /home/testuser1
+loginShell: /bin/bash
+mail: testuser1@scalehpc.local
+userPassword: {SSHA}8JxgDJVTxwQWKmRHc1ip0PdAPjY4looN
+
+dn: uid=testuser2,ou=people,dc=scalehpc,dc=local
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: top
+cn: testuser2
+sn: testuser2
+uidNumber: 1002
+gidNumber: 1002
+homeDirectory: /home/testuser2
+loginShell: /bin/bash
+mail: testuser2@scalehpc.local
+userPassword: {SSHA}8JxgDJVTxwQWKmRHc1ip0PdAPjY4looN
+
+
+[root@ldap-server ~]# sudo ldapadd -x -D cn=admin,dc=scalehpc,dc=local -W -f new_user.ldif
+Enter LDAP Password: 
+adding new entry "uid=testuser1,ou=people,dc=scalehpc,dc=local"
+
+adding new entry "uid=testuser2,ou=people,dc=scalehpc,dc=local"
+
+
+[root@ldap-server ~]# sudo ldapsearch -x -LLL -b dc=scalehpc,dc=local "(uid=testuser1)"
+dn: uid=testuser1,ou=people,dc=scalehpc,dc=local
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: top
+cn: testuser1
+sn: testuser1
+uidNumber: 1001
+gidNumber: 1001
+homeDirectory: /home/testuser1
+loginShell: /bin/bash
+mail: testuser1@netweb.local
+userPassword:: e1NTSEF9OEp4Z0RKVlR4d1FXS21SSGMxaXAwUGRBUGpZNGxvb04=
+uid: testuser1
+
+
+[root@ldap-server ~]# sudo ldapsearch -x -LLL -b dc=scalehpc,dc=local "(uid=testuser2)"
+dn: uid=testuser2,ou=people,dc=scalehpc,dc=local
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: top
+cn: testuser2
+sn: testuser2
+uidNumber: 1002
+gidNumber: 1002
+homeDirectory: /home/testuser2
+loginShell: /bin/bash
+mail: testuser2@scalehpc.local
+userPassword:: e1NTSEF9OEp4Z0RKVlR4d1FXS21SSGMxaXAwUGRBUGpZNGxvb04=
+uid: testuser2
+
+*** adding the groups ***
+
+[root@ldap-server ~]# cat new_group.ldif
+dn: cn=hpc,ou=groups,dc=scalehpc,dc=local
+objectClass: top
+objectClass: posixGroup
+cn: hpc
+gidNumber: 1001
+
+[root@ldap-server ~]# sudo ldapadd -x -D cn=admin,dc=scalehpc,dc=local -W -f new_group.ldif
+Enter LDAP Password: 
+adding new entry "cn=hpc,ou=groups,dc=scalehpc,dc=local"
+
+================================
+*** delete users and groups ***
+================================
+
+*** user ***
+
+[root@ldap-server ~]# vim delete_users.ldif
+
+[root@ldap-server ~]# cat delete_users.ldif 
+dn: uid=testuser3,ou=people,dc=scalehpc,dc=local
+changetype: delete
+
+[root@ldap-server ~]# sudo ldapdelete -x -D cn=admin,dc=scalehpc,dc=local -W uid=testuser3,ou=people,dc=scalehpc,dc=local
+
+[root@ldap-server ~]# sudo ldapsearch -x -LLL -b dc=scalehpc,dc=local "(uid=testuser3)"
+
+*** group ***
+
+[root@ldap-server ~]# vim delete_group.ldif
+
+[root@ldap-server ~]# cat delete_group.ldif 
+dn: cn=hpc,ou=groups,dc=scalehpc,dc=local
+changetype: delete
+
+[root@ldap-server ~]# sudo ldapdelete -x -D cn=admin,dc=scalehpc,dc=local -W cn=hpc,ou=groups,dc=scalehpc,dc=local
+
+===================================
+*** Modify the users and group ***
+===================================
+
+*** user ***
+*** Note: Create an LDIF file modify_user.ldif to modify a user.
+
+[root@ldap-server ~]# cat modify_user.ldif  
+dn: uid=testuser3,ou=people,dc=scalehpc,dc=local 
+changetype: modify 
+replace: loginShell 
+loginShell: /bin/zsh 
+
+[root@ldap-server ~]# sudo ldapmodify -x -D cn=admin,dc=scalehpc,dc=local -W -f modify_user.ldif 
+
+[root@ldap-server ~]# sudo ldapsearch -x -LLL -b dc=scalehpc,dc=local "(uid=testuser1)" 
+
+
+*** group ***
+*** Note: Create an LDIF file modify_user.ldif to modify a group.
+
+[root@ldap-server ~]# cat modify_group.ldif  
+dn: cn=hpc,ou=groups,dc=scalehpc,dc=local 
+changetype: modify 
+add: memberUid  
+memberUid: testuser1 
+
+[root@ldap-server ~]# sudo ldapmodify -x -D cn=admin,dc=scalehpc,dc=local -W -f modify_group.ldif 
+
+[root@ldap-server ~]# sudo ldapsearch -x -LLL -b dc=scalehpc,dc=local "(cn=hpc)" 
+
+
+===============================
+*** Add users to the group ***
+===============================
+
+*** Note: Create an LDIF file add_user_to_group.ldif .
+
+[root@ldap-server ~]# cat add_user_to_group.ldif  
+dn: cn=hpc,ou=Groups,dc=scalehpc,dc=local 
+changetype: modify 
+add: memberUid 
+memberUid: testuser1 
+
+[root@ldap-server ~]# ldapmodify -x -D cn=admin,dc=scalehpc,dc=local -W -f add_user_to_group.ldif 
+
+[root@ldap-server ~]# ldapsearch -x -D "cn=admin,dc=scalehpc,dc=local" -W -b "dc=scalehpc,dc=local" "(cn=hpc)" 
+
+==================================
+*** Secure OpenLDAP using TLS ***
+==================================
+
+*** Note: Generate CA Private key and CA certificate.
+
+[root@ldap-server certs]# pwd 
+/etc/pki/tls/certs 
+
+[root@ldap-server certs]# openssl genrsa -out ca.key 4096 
+
+[root@ldap-server certs]# openssl req -new -x509 -days 3650 -key ca.key -out ca.crt 
+
+
+*** Note: Here is a shell script ca_script.sh which will generate both server and client certificates inside /etc/pki/tls/certs. 
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+[root@ldap-server certs]# vim ca_script1.sh 
+
+#!/bin/bash
+
+# Define directories and filenames
+CERT_DIR="/etc/pki/tls/certs"
+CA_KEY="${CERT_DIR}/ca.key"
+CA_CERT="${CERT_DIR}/ca.crt"
+CLIENT_KEY="${CERT_DIR}/client.key"
+CLIENT_CSR="${CERT_DIR}/client.csr"
+CLIENT_CERT="${CERT_DIR}/client.crt"
+SERVER_KEY="${CERT_DIR}/server.key"
+SERVER_CSR="${CERT_DIR}/server.csr"
+SERVER_CERT="${CERT_DIR}/server.crt"
+
+# Create the certs directory if it doesn't exist
+[[ ! -d $CERT_DIR ]] && mkdir -p $CERT_DIR
+
+# Check if CA certificate and key exist
+if [[ ! -f $CA_KEY || ! -f $CA_CERT ]]; then
+  echo "CA certificate or key not found. Please create them before running this script."
+  exit 1
+fi
+
+# Generate server private key and CSR
+openssl req -new -sha512 -nodes -out $SERVER_CSR -newkey rsa:4096 -keyout $SERVER_KEY -subj "/C=IN/ST=MUMBAI/L=MUMBAI/O=ScaleHPC/OU=HPC/CN=ldap-server"
+
+# Define OpenSSL configuration file for server extensions
+SERVER_EXT_CONF="${CERT_DIR}/server_ext.cnf"
+cat > $SERVER_EXT_CONF << EOF
+[ v3_req ]
+basicConstraints = CA:FALSE
+keyUsage = critical, digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth, clientAuth
+subjectAltName = @alt_names
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always,issuer
+
+[ alt_names ]
+DNS.1 = ldap-server
+IP.1 = 10.201.20.11
+EOF
+
+# Generate server certificate with the correct extensions
+openssl x509 -req -in $SERVER_CSR -CA $CA_CERT -CAkey $CA_KEY -CAcreateserial -out $SERVER_CERT -days 3650 -sha512 -extfile $SERVER_EXT_CONF -extensions v3_req
+
+# Generate client private key and CSR
+openssl req -new -sha512 -nodes -out $CLIENT_CSR -newkey rsa:4096 -keyout $CLIENT_KEY -subj "/C=IN/ST=MUMBAI/L=MUMBAI/O=ScaleHPC/OU=HPC/CN=ldap-client1"
+
+# Check if client CSR file was created
+if [[ ! -f $CLIENT_CSR ]]; then
+  echo "Client CSR file not found. Please check the CSR generation step."
+  exit 1
+fi
+
+# Generate client certificate
+openssl x509 -req -in $CLIENT_CSR -CA $CA_CERT -CAkey $CA_KEY -CAcreateserial -out $CLIENT_CERT -days 3650 -sha512
+
+echo "Certificates generated successfully."
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+*** Verify if SAN field is properly updated on server certificate: 
+
+[root@ldap-server certs]# openssl x509  -noout -text -in server.crt | grep -A 2 "X509v3 Subject Alternative Name"
+            X509v3 Subject Alternative Name: 
+                DNS:ldap-server, IP Address:10.201.20.11
+            X509v3 Subject Key Identifier: 
+
+[root@ldap-server certs]# pwd
+/etc/pki/tls/certs
+
+[root@ldap-server certs]# chown -R ldap:ldap ca.crt ca.key ca.srl client.crt client.csr client.key server.crt server.csr server_ext.cnf server.key
+
+[root@ldap-server certs]# chmod 600 ca.crt ca.key ca.srl client.crt client.csr client.key server.crt server.csr server_ext.cnf server.key
+[root@ldap-server certs]# ll
+total 48
+lrwxrwxrwx 1 root root   49 Aug 21 16:56 ca-bundle.crt -> /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
+lrwxrwxrwx 1 root root   55 Aug 21 16:56 ca-bundle.trust.crt -> /etc/pki/ca-trust/extracted/openssl/ca-bundle.trust.crt
+-rw------- 1 ldap ldap 2212 Sep  3 06:56 ca.crt
+-rw------- 1 ldap ldap 3272 Sep  3 06:54 ca.key
+-rwxr-xr-x 1 root root 2067 Sep  3 07:04 ca_script1.sh
+-rwxr-xr-x 1 root root 1724 Sep  3 06:52 ca_script.sh
+-rw------- 1 ldap ldap   41 Sep  3 07:04 ca.srl
+-rw------- 1 ldap ldap 2037 Sep  3 07:04 client.crt
+-rw------- 1 ldap ldap 1732 Sep  3 07:04 client.csr
+-rw------- 1 ldap ldap 3272 Sep  3 07:04 client.key
+-rw------- 1 ldap ldap 2256 Sep  3 07:04 server.crt
+-rw------- 1 ldap ldap 1732 Sep  3 07:04 server.csr
+-rw------- 1 ldap ldap  292 Sep  3 07:04 server_ext.cnf
+-rw------- 1 ldap ldap 3272 Sep  3 07:04 server.key
+
+==================================================
+*** configure certificates on OpenLDAP Server ***
+==================================================
+
+*** Note: Configure your openldap server to consume the server certificates. Create an LDIF file (e.g., enable_tls.ldif) with the following content: 
+
+[root@ldap-server ~]# vim enable_tls.ldif 
+
+[root@ldap-server ~]# cat enable_tls.ldif 
+dn: cn=config
+changetype: modify
+replace: olcTLSCertificateFile
+olcTLSCertificateFile: /etc/pki/tls/certs/server.crt
+-
+replace: olcTLSCertificateKeyFile
+olcTLSCertificateKeyFile: /etc/pki/tls/certs/server.key
+-
+replace: olcTLSCACertificateFile
+olcTLSCACertificateFile: /etc/pki/tls/certs/ca.crt
+
+[root@ldap-server ~]# sudo ldapmodify -Y EXTERNAL -H ldapi:/// -f enable_tls.ldif
+SASL/EXTERNAL authentication started
+SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+SASL SSF: 0
+modifying entry "cn=config"
+
+*** verify the changes ***
+
+[root@ldap-server ~]# sudo ldapsearch -Y EXTERNAL -H ldapi:/// -b cn=config olcTLSCACertificateFile olcTLSCertificateFile olcTLSCertificateKeyFile
+SASL/EXTERNAL authentication started
+SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+SASL SSF: 0
+# extended LDIF
+#
+# LDAPv3
+# base <cn=config> with scope subtree
+# filter: (objectclass=*)
+# requesting: olcTLSCACertificateFile olcTLSCertificateFile olcTLSCertificateKeyFile 
+#
+
+# config
+dn: cn=config
+olcTLSCertificateFile: /etc/pki/tls/certs/server.crt
+olcTLSCertificateKeyFile: /etc/pki/tls/certs/server.key
+olcTLSCACertificateFile: /etc/pki/tls/certs/ca.crt
+
+# schema, config
+dn: cn=schema,cn=config
+
+# {0}core, schema, config
+dn: cn={0}core,cn=schema,cn=config
+
+# {1}cosine, schema, config
+dn: cn={1}cosine,cn=schema,cn=config
+
+# {2}nis, schema, config
+dn: cn={2}nis,cn=schema,cn=config
+
+# {3}inetorgperson, schema, config
+dn: cn={3}inetorgperson,cn=schema,cn=config
+
+# {-1}frontend, config
+dn: olcDatabase={-1}frontend,cn=config
+
+# {0}config, config
+dn: olcDatabase={0}config,cn=config
+
+# {1}monitor, config
+dn: olcDatabase={1}monitor,cn=config
+
+# {2}mdb, config
+dn: olcDatabase={2}mdb,cn=config
+
+# search result
+search: 2
+result: 0 Success
+
+# numResponses: 11
+# numEntries: 10
+
+[root@ldap-server ~]# systemctl status slapd
+● slapd.service - OpenLDAP Server Daemon
+     Loaded: loaded (/usr/lib/systemd/system/slapd.service; enabled; preset: disabled)
+     Active: active (running) since Tue 2024-09-03 06:08:21 UTC; 1h 16min ago
+       Docs: man:slapd
+             man:slapd-config
+             man:slapd-mdb
+             file:///usr/share/doc/openldap-servers/guide.html
+    Process: 38309 ExecStartPre=/usr/libexec/openldap/check-config.sh (code=exited, status=0/SUCCESS)
+    Process: 38330 ExecStart=/usr/sbin/slapd -u ldap -h ldap:/// ldaps:/// ldapi:/// (code=exited, status=0/SUCCESS)
+   Main PID: 38331 (slapd)
+      Tasks: 5 (limit: 24608)
+     Memory: 28.4M
+        CPU: 140ms
+     CGroup: /system.slice/slapd.service
+             └─38331 /usr/sbin/slapd -u ldap -h "ldap:/// ldaps:/// ldapi:///"
+
+Sep 03 07:24:16 ldap-server slapd[38331]: conn=1031 fd=17 ACCEPT from PATH=/var/run/ldapi (PATH=/var/run/ldapi)
+Sep 03 07:24:16 ldap-server slapd[38331]: conn=1031 op=0 BIND dn="" method=163
+Sep 03 07:24:16 ldap-server slapd[38331]: conn=1031 op=0 BIND authcid="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" authzid="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth"
+Sep 03 07:24:16 ldap-server slapd[38331]: conn=1031 op=0 BIND dn="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" mech=EXTERNAL bind_ssf=0 ssf=71
+Sep 03 07:24:16 ldap-server slapd[38331]: conn=1031 op=0 RESULT tag=97 err=0 qtime=0.000098 etime=0.000398 text=
+Sep 03 07:24:16 ldap-server slapd[38331]: conn=1031 op=1 SRCH base="cn=config" scope=2 deref=0 filter="(objectClass=*)"
+Sep 03 07:24:16 ldap-server slapd[38331]: conn=1031 op=1 SRCH attr=olcTLSCACertificateFile olcTLSCertificateFile olcTLSCertificateKeyFile
+Sep 03 07:24:16 ldap-server slapd[38331]: conn=1031 op=1 SEARCH RESULT tag=101 err=0 qtime=0.000052 etime=0.000801 nentries=10 text=
+Sep 03 07:24:16 ldap-server slapd[38331]: conn=1031 op=2 UNBIND
+Sep 03 07:24:16 ldap-server slapd[38331]: conn=1031 fd=17 closed
+
+*** Note: Also check if LDAP server is listening on port 636, 389 or not: 
+
+[root@ldap-server ~]# ss -ntlp | grep :636
+LISTEN 0      2048         0.0.0.0:636       0.0.0.0:*    users:(("slapd",pid=38331,fd=9))                         
+LISTEN 0      2048            [::]:636          [::]:*    users:(("slapd",pid=38331,fd=10)) 
+
+[root@ldap-server ~]# ss -ntlp | grep :389
+LISTEN 0      2048         0.0.0.0:389       0.0.0.0:*    users:(("slapd",pid=38331,fd=7))                         
+LISTEN 0      2048            [::]:389          [::]:*    users:(("slapd",pid=38331,fd=8)) 
+
+
+==============================================================================
+*** Add extra users so you need to add first in to the new_user.ldif file ***
+==============================================================================
+
+
+[root@ldap-server ~]# ldapadd -h ldap-server -p 389 -D cn=admin,dc=scalehpc,dc=local -w scalehpc -c < new_user.ldif 
+adding new entry "uid=testuser1,ou=people,dc=scalehpc,dc=local"
+ldap_add: Already exists (68)
+
+adding new entry "uid=testuser2,ou=people,dc=scalehpc,dc=local"
+ldap_add: Already exists (68)
+
+adding new entry "uid=testuser3,ou=people,dc=scalehpc,dc=local"
+
+
+[root@ldap-server certs]# ldapsearch -x -b dc=scalehpc,dc=local '(uid=testuser3)'
+# extended LDIF
+#
+# LDAPv3
+# base <dc=scalehpc,dc=local> with scope subtree
+# filter: (uid=testuser3)
+# requesting: ALL
+#
+
+# testuser3, people, scalehpc.local
+dn: uid=testuser3,ou=people,dc=scalehpc,dc=local
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: top
+cn: testuser3
+sn: testuser3
+uidNumber: 1003
+gidNumber: 1003
+homeDirectory: /home/testuser3
+loginShell: /bin/bash
+mail: testuser3@scalehpc.local
+userPassword:: e1NTSEF9OEp4Z0RKVlR4d1FXS21SSGMxaXAwUGRBUGpZNGxvb04=
+uid: testuser3
+
+# search result
+search: 2
+result: 0 Success
+
+# numResponses: 2
+# numEntries: 1
+
+
+===============================================================================
+*** Add extra group so you need to add first in to the new_group.ldif file ***
+===============================================================================
+
+
+[root@ldap-server ~]# vim new_group.ldif 
+
+[root@ldap-server ~]# cat new_group.ldif 
+dn: cn=hpc,ou=groups,dc=scalehpc,dc=local
+objectClass: top
+objectClass: posixGroup
+cn: hpc
+gidNumber: 1001
+
+dn: cn=ai,ou=groups,dc=scalehpc,dc=local
+objectClass: top
+objectClass: posixGroup
+cn: ai
+gidNumber: 1002
+
+[root@ldap-server ~]# ldapadd -h ldap-server -p 389 -D cn=admin,dc=scalehpc,dc=local -w scalehpc -c < new_group.ldif 
+adding new entry "cn=hpc,ou=groups,dc=scalehpc,dc=local"
+ldap_add: Already exists (68)
+
+adding new entry "cn=ai,ou=groups,dc=scalehpc,dc=local"
+
+[root@ldap-server ~]# sudo ldapsearch -x -LLL -b dc=scalehpc,dc=local "(cn=ai)"
+dn: cn=ai,ou=groups,dc=scalehpc,dc=local
+objectClass: top
+objectClass: posixGroup
+cn: ai
+gidNumber: 1002
+
+*** on client side ***
+
+[root@ldap-client1 ~]# systemctl restart sssd oddjobd
+
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+======================================
+*** LDAP CLIENT-END CONFIGURATION ***
+======================================
+
+
+*** Note: Copy the ca-certs from ldap-server.
+
+
+[root@ldap-server certs]# pwd
+/etc/pki/tls/certs
+
+[root@ldap-server certs]# scp -r ca.crt client.crt client.csr client.key root@ldap-client1:/etc/pki/tls/certs
+
+=======================================
+*** Installation of client packages ***
+=======================================
+
+
+[root@ldap-client1 certs]# dnf -y install openldap-clients sssd sssd-ldap oddjob-mkhomedir openssl-perl
+[root@ldap-client1 certs]# cd /etc/sssd/
+
+*** Note: Create a new /etc/sssd/sssd.conf file (if not present) or remove everything and add the below content to use TLS of ldap communication: 
+
+[root@ldap-client1 sssd]# vim sssd.conf
+
+[sssd]
+config_file_version = 2
+services = nss, pam,autofs
+domains = default
+
+[nss]
+homedir_substring = /home
+
+[pam]
+
+[domain/default]
+id_provider = ldap
+autofs_provider = ldap
+auth_provider = ldap
+chpass_provider = ldap
+ldap_uri = ldap://10.201.20.11
+ldap_search_base = dc=scalehpc,dc=local
+ldap_id_use_start_tls = True
+ldap_tls_cacertdir = /etc/pki/tls/certs
+cache_credentials = True
+ldap_tls_reqcert = allow
+
+[root@ldap-client1 ~]# chmod 600 /etc/sssd/sssd.conf 
+[root@ldap-client1 ~]# chown root:root /etc/sssd/sssd.conf 
+
+*** configure /etc/openldap/ldap.conf add following:
+
+BASE   dc=scalehpc,dc=local
+URI    ldap://10.201.20.30
+
+TLS_CACERT      /etc/pki/tls/certs/ca.crt
+TLS_CACERTDIR   /etc/pki/tls/certs/
+
+
+*** Refersh the certificates ***
+
+[root@ldap-client1 ~]# openssl rehash /etc/pki/tls/certs/* 
+
+
+*** Configure mkhomedir to auto create home directories ***
+
+[root@ldap-client1 sssd]# authselect select sssd with-mkhomedir --force
+Backup stored at /var/lib/authselect/backups/2024-09-03-09-43-53.XPnlRk
+Profile "sssd" was selected.
+The following nsswitch maps are overwritten by the profile:
+- passwd
+- group
+- netgroup
+- automount
+- services
+
+Make sure that SSSD service is configured and enabled. See SSSD documentation for more information.
+ 
+- with-mkhomedir is selected, make sure pam_oddjob_mkhomedir module
+  is present and oddjobd service is enabled and active
+  - systemctl enable --now oddjobd.service
+
+
+*** start and enable the services ***
+
+
+[root@ldap-client1 sssd]# systemctl start sssd
+[root@ldap-client1 sssd]# systemctl enable sssd
+
+[root@ldap-client1 sssd]# systemctl status sssd
+● sssd.service - System Security Services Daemon
+     Loaded: loaded (/usr/lib/systemd/system/sssd.service; enabled; preset: enabled)
+     Active: active (running) since Tue 2024-09-03 09:58:01 UTC; 1min 51s ago
+   Main PID: 691 (sssd)
+      Tasks: 5 (limit: 24608)
+     Memory: 51.9M
+        CPU: 136ms
+     CGroup: /system.slice/sssd.service
+             ├─691 /usr/sbin/sssd -i --logger=files
+             ├─698 /usr/libexec/sssd/sssd_be --domain default --uid 0 --gid 0 --logger=files
+             ├─699 /usr/libexec/sssd/sssd_nss --uid 0 --gid 0 --logger=files
+             ├─700 /usr/libexec/sssd/sssd_pam --uid 0 --gid 0 --logger=files
+             └─701 /usr/libexec/sssd/sssd_autofs --uid 0 --gid 0 --logger=files
+
+Sep 03 09:58:01 ldap-client1 systemd[1]: Starting System Security Services Daemon...
+Sep 03 09:58:01 ldap-client1 sssd[691]: Starting up
+Sep 03 09:58:01 ldap-client1 sssd_be[698]: Starting up
+Sep 03 09:58:01 ldap-client1 sssd_nss[699]: Starting up
+Sep 03 09:58:01 ldap-client1 sssd_autofs[701]: Starting up
+Sep 03 09:58:01 ldap-client1 sssd_pam[700]: Starting up
+Sep 03 09:58:01 ldap-client1 systemd[1]: Started System Security Services Daemon.
+
+[root@ldap-client1 sssd]# systemctl enable oddjobd.service --now
+Created symlink /etc/systemd/system/multi-user.target.wants/oddjobd.service → /usr/lib/systemd/system/oddjobd.service.
+[root@ldap-client1 sssd]# systemctl status oddjobd.service 
+● oddjobd.service - privileged operations for unprivileged applications
+     Loaded: loaded (/usr/lib/systemd/system/oddjobd.service; enabled; preset: disabled)
+     Active: active (running) since Tue 2024-09-03 10:00:24 UTC; 11s ago
+   Main PID: 937 (oddjobd)
+      Tasks: 1 (limit: 24608)
+     Memory: 1.3M
+        CPU: 7ms
+     CGroup: /system.slice/oddjobd.service
+             └─937 /usr/sbin/oddjobd -n -p /run/oddjobd.pid -t 300
+
+Sep 03 10:00:24 ldap-client1 systemd[1]: Started privileged operations for unprivileged applications.
+
+=======================================================
+*** Verify and test the user created on ldap-server ***
+=======================================================
+
+[root@ldap-client1 sssd]# su - testuser1
+Creating home directory for testuser1.
+[testuser1@ldap-client1 ~]$ pwd
+/home/testuser1
+
+[root@ldap-client1 sssd]# su - testuser2
+Creating home directory for testuser2.
+[testuser1@ldap-client1 ~]$ pwd
+/home/testuser2
+
+
+================================================================================================================================================================================================================
+                                                                                               THE END - ScaleHPC
+================================================================================================================================================================================================================
+
 
