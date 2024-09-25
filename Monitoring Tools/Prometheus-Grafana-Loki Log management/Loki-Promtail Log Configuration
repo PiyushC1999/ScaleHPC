@@ -1,1 +1,178 @@
+=================================================================================================================================================================================================================
+                                                             LOKI-PROMTAIL Installation on Master Node - PIYUSH CHAVHAN (HPC ENGINEER R&D)
+=================================================================================================================================================================================================================
 
+*** Loki installtion on master node ***
+
+[root@master ~]# wget https://github.com/grafana/loki/releases/download/v2.8.2/loki-linux-amd64.zip 
+[root@master ~]# unzip loki-linux-amd64.zip 
+
+[root@master ~]# sudo mv loki-linux-amd64 /usr/local/bin/loki 
+[root@master ~]# sudo chmod +x /usr/local/bin/loki 
+
+
+*** create a configuration file for loki located at /etc/loki/loki-config.yaml ***
+
+
+[root@master ~]# cat /etc/loki/loki-config.yaml 
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+
+ingester:
+  lifecycler:
+    address: 10.201.20.138
+    ring:
+      kvstore:
+        store: inmemory
+      replication_factor: 1
+    final_sleep: 0s
+  chunk_idle_period: 5m
+  chunk_retain_period: 30s
+  max_transfer_retries: 0
+
+schema_config:
+  configs:
+    - from: 2018-04-15
+      store: boltdb
+      object_store: filesystem
+      schema: v11
+      index:
+        prefix: index_
+        period: 168h
+
+storage_config:
+  boltdb:
+    directory: /tmp/loki/index
+
+  filesystem:
+    directory: /tmp/loki/chunks
+
+limits_config:
+  enforce_metric_name: false
+  reject_old_samples: true
+  reject_old_samples_max_age: 168h
+
+chunk_store_config:
+  max_look_back_period: 0s
+
+table_manager:
+  retention_deletes_enabled: false
+  retention_period: 0s
+
+
+*** create a systemd service for loki at /etc/systemd/system/loki.service ***
+
+[Unit] 
+Description=Loki Service 
+After=network.target 
+
+[Service] 
+Type=simple 
+ExecStart=/usr/local/bin/loki -config.file=/etc/loki/loki-config.yaml 
+Restart=always 
+
+[Install] 
+WantedBy=multi-user.target 
+
+*** Reload systemd, start and enable the loki service ***
+
+[root@master ~]# sudo systemctl daemon-reload 
+[root@master ~]# sudo systemctl start loki 
+[root@master ~]# sudo systemctl enable loki 
+[root@master ~]# sudo systemctl status loki 
+
+*** Promtail installation on master node ***
+
+[root@master ~]# wget https://github.com/grafana/loki/releases/download/v2.8.2/promtail-linux-amd64.zip 
+[root@master ~]# unzip promtail-linux-amd64.zip 
+
+[root@master ~]# sudo mv promtail-linux-amd64 /usr/local/bin/promtail 
+[root@master ~]# sudo chmod +x /usr/local/bin/promtail 
+
+*** create the configuration file at /etc/promtail/promtail-config.yaml ***
+
+[root@master ~]# cat /etc/promtail/promtail-config.yaml
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://10.201.20.116:3100/loki/api/v1/push
+
+scrape_configs:
+- job_name: master
+  static_configs:
+  - targets:
+      - 10.201.20.116
+    labels:
+      job: syslog
+      __path__: /var/log/*.log
+- job_name: node1
+  static_configs:
+  - targets:
+      - 10.201.20.191
+    labels:
+      job: client_node1_syslog
+      __path__: /var/log/*.log
+      
+      
+      
+*** create a systemd service promtail /etc/systemd/system/promtail.service ***
+
+[Unit] 
+Description=Promtail Service 
+After=network.target 
+  
+[Service] 
+Type=simple 
+ExecStart=/usr/local/bin/promtail -config.file=/etc/promtail/promtail-config.yaml 
+Restart=always 
+  
+[Install] 
+WantedBy=multi-user.target 
+
+
+*** Reload systemd, start and enable the promtail service ***
+
+[root@master ~]# sudo systemctl daemon-reload 
+[root@master ~]# sudo systemctl start promtail 
+[root@master ~]# sudo systemctl enable promtail  
+[root@master ~]# sudo systemctl status promtail 
+
+
+*** similarly add the promtail service to the client nodes and start the service ***
+
+[root@node1 ~]# cat /etc/promtail/promtail-config.yaml 
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://10.201.20.116:3100/loki/api/v1/push
+
+scrape_configs:
+- job_name: node1
+  static_configs:
+  - targets:
+      - 10.201.20.191
+    labels:
+      job: client_node_syslog
+      __path__: /var/log/*.log
+
+
+[root@node1 ~]# sudo systemctl start promtail 
+[root@node1 ~]# sudo systemctl enable promtail  
+[root@node1 ~]# sudo systemctl status promtail 
+
+
+=================================================================================================================================================================================================================
+                                                                                              THE END - ScaleHPC
+================================================================================================================================================================================================================= 
