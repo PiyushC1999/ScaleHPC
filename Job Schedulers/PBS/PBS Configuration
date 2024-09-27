@@ -1,1 +1,206 @@
+==================================================================================================================================================================================================================
+                                                        PBS JOB SCHEDULER INSTALLATION, CONFIGURATION and JOB SUBMISSION - PIYUSH CHAVHAN (HPC ENGINEER R&D)
+==================================================================================================================================================================================================================
+
+***Important links***
+-------------------------------------------
+https://github.com/openpbs/openpbs/releases
+https://vcdn.altair.com/rl/OpenPBS/openpbs_23.06.06.rockylinux_8.8.zip
+-------------------------------------------
+====================================================                                                                    
+*** Download PBS from source code (Master Node) ***
+====================================================
+
+***Note: Pre-requisites***
+
+[root@mds-mgmt libexec]# dnf install -y gcc make rpm-build libtool hwloc-devel libX11-devel libXt-devel libedit-devel libical-devel ncurses-devel perl postgresql-devel postgresql-contrib python3-devel tcl-devel tk-devel swig expat-devel openssl-devel libXext libXft autoconf automake gcc-c++ cjson-devel
+
+[root@mds-mgmt libexec]# yum install -y expat libedit postgresql-server postgresql-contrib python3 sendmail sudo tcl tk libical chkconfig cjson
+------------------------------------------------------------------------------------------------------------------------------------------------
+[root@mds-mgmt ~]# wget https://github.com/openpbs/openpbs/archive/refs/tags/v23.06.06.tar.gz
+
+[root@mds-mgmt ~]# tar -xvzf v23.06.06.tar.gz
+
+[root@mds-mgmt ~]# cd openpbs-23.06.06/
+
+[root@mds-mgmt openpbs-23.06.06]# ./autogen.sh 
+
+[root@mds-mgmt openpbs-23.06.06]# ./configure --prefix=/opt/pbs
+
+[root@mds-mgmt openpbs-23.06.06]# make 
+
+[root@mds-mgmt openpbs-23.06.06]# make install
+------------------------------------------------------------------------------------------------------------------------------------------------
+[root@mds-mgmt openpbs-23.06.06]# cd /opt/pbs/
+[root@mds-mgmt pbs]# ls
+bin  etc  include  lib  libexec  sbin  share  unsupported
+
+[root@mds-mgmt pbs]# cd libexec/
+[root@mds-mgmt libexec]# ls
+pbs_db_env  pbs_db_schema.sql  pbs_db_utility  pbs_habitat  pbs_init.d  pbs_postinstall  pbs_posttrans  pbs_preuninstall  pbs_reload  pbs_schema_upgrade
+
+[root@mds-mgmt libexec]# ./pbs_postinstall
+
+[root@mds-mgmt libexec]# vim /etc/pbs.conf
+PBS_SERVER=mds-mgmt
+PBS_START_SERVER=1
+PBS_START_SCHED=1
+PBS_START_COMM=1
+PBS_START_MOM=0
+PBS_EXEC=/opt/pbs
+PBS_HOME=/var/spool/pbs
+PBS_CORE_LIMIT=unlimited
+PBS_SCP=/usr/bin/scp
+
+[root@mds-mgmt libexec]# systemctl start pbs
+
+[root@mds-mgmt libexec]# systemctl enable pbs
+
+[root@mds-mgmt libexec]# systemctl status pbs
+[root@mds-mgmt libexec]# systemctl status pbs
+● pbs.service - Portable Batch System
+   Loaded: loaded (/opt/pbs/libexec/pbs_init.d; enabled; vendor preset: disabled)
+   Active: active (running) since Fri 2024-09-27 06:16:15 UTC; 10s ago
+     Docs: man:pbs(8)
+  Process: 169806 ExecStart=/opt/pbs/libexec/pbs_init.d start (code=exited, status=0/SUCCESS)
+    Tasks: 13
+   Memory: 35.5M
+   CGroup: /system.slice/pbs.service
+           ├─171480 /opt/pbs/sbin/pbs_comm
+           ├─171486 /opt/pbs/sbin/pbs_sched
+           ├─171591 /opt/pbs/sbin/pbs_ds_monitor monitor
+           ├─171673 /usr/bin/postgres -D /var/spool/pbs/datastore -p 15007
+           ├─171683 postgres: logger process   
+           ├─171685 postgres: checkpointer process   
+           ├─171686 postgres: writer process   
+           ├─171687 postgres: wal writer process   
+           ├─171688 postgres: autovacuum launcher process   
+           ├─171689 postgres: stats collector process   
+           ├─171690 postgres: bgworker: logical replication launcher   
+           ├─171776 postgres: postgres pbs_datastore 10.201.20.50(36494) idle
+           └─171777 /opt/pbs/sbin/pbs_server.bin
+
+Sep 27 06:16:11 mds-mgmt su[171592]: (to postgres) root on none
+Sep 27 06:16:11 mds-mgmt su[171592]: pam_unix(su-l:session): session opened for user postgres by (uid=0)
+Sep 27 06:16:11 mds-mgmt su[171592]: pam_unix(su-l:session): session closed for user postgres
+Sep 27 06:16:14 mds-mgmt su[171695]: (to postgres) root on none
+Sep 27 06:16:14 mds-mgmt su[171695]: pam_unix(su-l:session): session opened for user postgres by (uid=0)
+Sep 27 06:16:14 mds-mgmt su[171695]: pam_unix(su-l:session): session closed for user postgres
+Sep 27 06:16:15 mds-mgmt pbs_init.d[171487]: Connecting to PBS dataservice...connected to PBS dataservice@mds-mgmt
+Sep 27 06:16:15 mds-mgmt pbs_init.d[169806]: PBS server
+Sep 27 06:16:15 mds-mgmt systemd[1]: Started Portable Batch System.
+Sep 27 06:16:15 mds-mgmt pbs_init.d[171777]: Connecting to PBS dataservice...connected to PBS dataservice@mds-mgmt
+-------------------------------------------------------------------------------------------------------------------------------------------------
+[root@mds-mgmt ~]# vim ~/.bashrc 
+export PATH=/opt/pbs/bin:$PATH
+
+[root@mds-mgmt ~]# source ~/.bashrc
+-------------------------------------------------------------------------------------------------------------------------------------------------
+[root@mds-mgmt ~]# /opt/pbs/bin/qstat --version
+pbs_version = 23.06.06
+
+[root@mds-mgmt ~]# qstat -Q
+Queue              Max   Tot Ena Str   Que   Run   Hld   Wat   Trn   Ext Type
+---------------- ----- ----- --- --- ----- ----- ----- ----- ----- ----- ----
+workq                0     0 yes yes     0     0     0     0     0     0 Exe*
+
+[root@mds-mgmt ~]# qstat -B
+Server             Max   Tot   Que   Run   Hld   Wat   Trn   Ext Status
+---------------- ----- ----- ----- ----- ----- ----- ----- ----- -----------
+mds-mgmt             0     0     0     0     0     0     0     0 Active  
+
+
+
+===================
+*** Add Nodes ***
+===================
+
+*** Note: Follow the exact steps to install the pbs v23.06.06 on all the compute nodes.
+
+[root@oss1 ~]# cat /etc/pbs.conf               //for all the clients add this
+PBS_SERVER=mds-mgmt
+PBS_START_SERVER=0
+PBS_START_SCHED=0
+PBS_START_COMM=0
+PBS_START_MOM=1
+PBS_EXEC=/opt/pbs
+PBS_HOME=/var/spool/pbs
+PBS_CORE_LIMIT=unlimited
+PBS_SCP=/usr/bin/scp
+
+[root@mds-mgmt ~]# qmgr -c "create node oss1"
+
+[root@mds-mgmt ~]# qmgr -c "create node node1"
+
+[root@mds-mgmt ~]# pbsnodes -a
+oss1
+     Mom = oss1
+     Port = 15002
+     pbs_version = 23.06.06
+     ntype = PBS
+     state = free
+     pcpus = 8
+     resources_available.arch = linux
+     resources_available.host = oss1
+     resources_available.mem = 16138404kb
+     resources_available.ncpus = 8
+     resources_available.vnode = oss1
+     resources_assigned.accelerator_memory = 0kb
+     resources_assigned.hbmem = 0kb
+     resources_assigned.mem = 0kb
+     resources_assigned.naccelerators = 0
+     resources_assigned.ncpus = 0
+     resources_assigned.vmem = 0kb
+     resv_enable = True
+     sharing = default_shared
+     license = l
+     last_state_change_time = Fri Sep 27 15:21:36 2024
+
+node1
+     Mom = node1
+     Port = 15002
+     pbs_version = 23.06.06
+     ntype = PBS
+     state = free
+     pcpus = 8
+     resources_available.arch = linux
+     resources_available.host = node1
+     resources_available.mem = 16138408kb
+     resources_available.ncpus = 8
+     resources_available.vnode = node1
+     resources_assigned.accelerator_memory = 0kb
+     resources_assigned.hbmem = 0kb
+     resources_assigned.mem = 0kb
+     resources_assigned.naccelerators = 0
+     resources_assigned.ncpus = 0
+     resources_assigned.vmem = 0kb
+     resv_enable = True
+     sharing = default_shared
+     license = l
+     last_state_change_time = Fri Sep 27 15:19:41 2024
+
+[root@mds-mgmt ~]# pbsnodes -aSj
+                                                        mem       ncpus   nmics   ngpus
+vnode           state           njobs   run   susp      f/t        f/t     f/t     f/t   jobs
+--------------- --------------- ------ ----- ------ ------------ ------- ------- ------- -------
+oss1            free                 0     0      0    15gb/15gb     8/8     0/0     0/0 --
+node1           free                 0     0      0    15gb/15gb     8/8     0/0     0/0 --
+
+
+[root@mds-mgmt sbin]# pwd
+/opt/pbs/sbin
+
+[root@mds-mgmt sbin]# ls
+pbs_comm         pbs_dataservice.bin  pbs_ds_monitor   pbs_ds_password.bin  pbsfs      pbs_iff  pbs_probe  pbs_sched   pbs_server.bin  pbs_upgrade_job
+pbs_dataservice  pbs_demux            pbs_ds_password  pbs_ds_systemd       pbs_idled  pbs_mom  pbs_rcp    pbs_server  pbs_snapshot
+
+[root@mds-mgmt sbin]# ./pbs_mom 
+
+[root@mds-mgmt sbin]# ./pbs_server
+
+
+
+=================================================================================================================================================================================================================
+                                                                                               THE END - ScaleHPC
+=================================================================================================================================================================================================================
 
