@@ -198,7 +198,35 @@ pbs_dataservice  pbs_demux            pbs_ds_password  pbs_ds_systemd       pbs_
 
 [root@mds-mgmt sbin]# ./pbs_server
 
-
+[root@mds-mgmt ~]# qmgr -c "set server acl_roots=piyush"
+[root@mds-mgmt ~]# qmgr -c "list server"
+Server mds-mgmt
+    server_state = Active
+    server_host = mds-mgmt
+    scheduling = True
+    total_jobs = 0
+    state_count = Transit:0 Queued:0 Held:0 Waiting:0 Running:0 Exiting:0 Begun:0 
+    acl_roots = piyush
+    default_queue = workq
+    log_events = 511
+    mailer = /usr/sbin/sendmail
+    mail_from = adm
+    query_other_jobs = True
+    resources_default.ncpus = 1
+    default_chunk.ncpus = 1
+    scheduler_iteration = 600
+    resv_enable = True
+    node_fail_requeue = 310
+    max_array_size = 10000
+    pbs_license_min = 0
+    pbs_license_max = 2147483647
+    pbs_license_linger_time = 31536000
+    license_count = Avail_Global:1000000 Avail_Local:1000000 Used:0 High_Use:0
+    pbs_version = 23.06.06
+    eligible_time_enable = False
+    max_concurrent_provision = 5
+    power_provisioning = False
+    max_job_sequence_id = 9999999
 
 =================================================================================================================================================================================================================
                                                                                                THE END - ScaleHPC
