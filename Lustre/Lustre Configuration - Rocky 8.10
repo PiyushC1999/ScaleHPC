@@ -1,7 +1,7 @@
 =================================================================================================================================================================================================================
                                          LUSTRE CONFIGURATIONS on (Rocky 8.10) lustre rocky 8.10 kernel-4.18.0-553.5.1.el8  - PIYUSH CHAVHAN (HPC ENGINEER R&D)  
 =================================================================================================================================================================================================================
-Pre-Requisites: 3 VMs with Rocky 8.10 OS
+Pre-Requisites: 3 VMs with Rocky 8.10 OS (Operating System)
 VM1: mds-mgmt (2 extra storage blocks 10Gb each)
 VM2: oss1 (2 extra storage blocks 10Gb each)
 VM3: node1 (mount the filesystem)
